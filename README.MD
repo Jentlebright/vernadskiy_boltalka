@@ -4,6 +4,7 @@
 запуск
 ```
 pip install -r requirements.txt
+python main.py build-graph
 python main.py index
 python main.py
 ```
