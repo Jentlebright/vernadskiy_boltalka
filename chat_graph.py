@@ -7,8 +7,32 @@ from langchain_openai import ChatOpenAI
 from langgraph.graph import END, StateGraph
 from langgraph.graph.message import add_messages
 
+import httpx
+
 from graph_store import get_retriever
 import config
+
+_qwen_model_cache = None
+
+
+def _get_qwen_model():
+    global _qwen_model_cache
+    if config.QWEN_RUADAPT_MODEL:
+        return config.QWEN_RUADAPT_MODEL
+    if _qwen_model_cache:
+        return _qwen_model_cache
+    try:
+        url = config.QWEN_RUADAPT_BASE_URL.rstrip("/") + "/models"
+        r = httpx.get(url, headers={"Authorization": f"Bearer {config.QWEN_RUADAPT_API_KEY}"}, timeout=10)
+        data = r.json()
+        models = data.get("data", [])
+        if models:
+            _qwen_model_cache = models[0].get("id", "")
+            return _qwen_model_cache
+    except Exception:
+        pass
+    _qwen_model_cache = "Qwen2-7B-Instruct"
+    return _qwen_model_cache
 
 SYSTEM_EXPERT = """Ты — языковая маска Владимира Ивановича Вернадского.
 Отвечай от его лица, используя его стиль и терминологию.
@@ -75,7 +99,7 @@ def generate_node(state: State) -> State:
         llm = ChatOpenAI(
             base_url=config.QWEN_RUADAPT_BASE_URL,
             api_key=config.QWEN_RUADAPT_API_KEY,
-            model="qwen",
+            model=_get_qwen_model(),
         )
     if llm is None and config.USE_VSEGPT:
         llm = ChatOpenAI(

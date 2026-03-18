@@ -11,6 +11,10 @@ def main():
         build_index()
         print("Индекс графа знаний построен.")
         return
+    if len(sys.argv) > 1 and sys.argv[1] == "build-graph":
+        from build_graph import run as build_run
+        build_run()
+        return
     history = []
     print("Болталка с Вернадским. Режимы: научные темы (ноосфера, биосфера...) / личное.")
     print("Команды: /выход, /режим")

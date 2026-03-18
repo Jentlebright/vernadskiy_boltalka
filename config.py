@@ -13,9 +13,8 @@ if _env_path.exists():
                 os.environ[k] = v
 
 
-# МОИ ОБХОДЫ ПРОКСИ, потом убрать
 _noproxy = os.environ.get("NO_PROXY", "")
-_add = ",".join(h for h in ("localhost", "127.0.0.1") if h not in _noproxy)
+_add = ",".join(h for h in ("localhost", "127.0.0.1", "193.124.33.40") if h not in _noproxy)
 if _add:
     os.environ["NO_PROXY"] = f"{_add},{_noproxy}".strip(",")
 
@@ -31,7 +30,11 @@ VSEGPT_MODEL = os.getenv("VSEGPT_MODEL", "meta-llama/llama-3-8b-instruct")
 USE_VSEGPT = bool(VSEGPT_API_URL and VSEGPT_API_KEY)
 QWEN_RUADAPT_BASE_URL = os.getenv("QWEN_RUADAPT_BASE_URL", "")
 QWEN_RUADAPT_API_KEY = os.getenv("QWEN_RUADAPT_API_KEY", "")
+QWEN_RUADAPT_MODEL = os.getenv("QWEN_RUADAPT_MODEL", "").strip()
 USE_QWEN = bool(QWEN_RUADAPT_BASE_URL and QWEN_RUADAPT_API_KEY)
+if USE_QWEN:
+    for k in ("HTTP_PROXY", "HTTPS_PROXY", "http_proxy", "https_proxy"):
+        os.environ.pop(k, None)
 OLLAMA_BASE_URL = os.getenv("OLLAMA_BASE_URL", "http://localhost:11434")
 OLLAMA_MODEL = os.getenv("OLLAMA_MODEL", "")
 QDRANT_PATH = os.getenv("QDRANT_PATH", "")
