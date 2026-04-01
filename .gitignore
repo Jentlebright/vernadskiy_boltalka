@@ -1,0 +1,14 @@
+.env
+.venv
+.DS_Store
+
+# локальное хранилище Qdrant (embedded)
+qdrant_data/collection/
+qdrant_data/meta.json
+qdrant_data/.lock
+qdrant_data/__pycache__/
+
+__pycache__/
+
+# промежуточный вывод препроцесса (пересобирается скриптом)
+data/preprocessed_chunks.json
