@@ -3,6 +3,7 @@ from typing import Annotated, Literal, TypedDict
 from langchain_core.messages import BaseMessage, HumanMessage
 from langchain_core.prompts import ChatPromptTemplate, MessagesPlaceholder
 from langchain_openai import ChatOpenAI
+from langchain_community.chat_models import ChatOllama
 from langgraph.graph import END, StateGraph
 from langgraph.graph.message import add_messages
 
@@ -64,19 +65,41 @@ def _get_qwen_model() -> str:
 
 
 def _get_llm():
+    if config.OLLAMA_MODEL:
+        return ChatOllama(
+            base_url=config.OLLAMA_BASE_URL,
+            model=config.OLLAMA_MODEL,
+        )
+    if config.USE_QWEN:
+        return ChatOpenAI(
+            base_url=config.QWEN_RUADAPT_BASE_URL,
+            api_key=config.QWEN_RUADAPT_API_KEY,
+            model=_get_qwen_model(),
+        )
+    if config.USE_VSEGPT:
+        return ChatOpenAI(
+            base_url=config.VSEGPT_API_URL,
+            api_key=config.VSEGPT_API_KEY,
+            model=config.VSEGPT_MODEL,
+        )
     if config.USE_BOTHUB:
         return ChatOpenAI(
             base_url=config.BOTHUB_BASE_URL,
             api_key=config.BOTHUB_API_KEY,
             model=config.BOTHUB_MODEL,
         )
+    if config.OPENAI_API_KEY.strip():
+        return ChatOpenAI(
+            model=config.MODEL or "gpt-4o-mini",
+            api_key=config.OPENAI_API_KEY,
+        )
 
     raise RuntimeError(
         "Не настроена модель. Укажи один из вариантов в `.env` или `_env`: "
         "OPENAI_API_KEY (и при желании MODEL), "
-        "или VSEGPT_API_URL+VSEGPT_API_KEY, "
-        "или BOTHUB_BASE_URL+BOTHUB_API_KEY, "
-        "или OLLAMA_MODEL."
+        "или VSEGPT_API_URL+VSEGPT_API_KEY (+ USE_VSEGPT=true), "
+        "или BOTHUB_BASE_URL+BOTHUB_API_KEY (+ USE_BOTHUB=true), "
+        "или OLLAMA_MODEL, или QWEN (+ USE_QWEN=true)."
     )
 
 
