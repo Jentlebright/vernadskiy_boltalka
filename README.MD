@@ -1,11 +1,11 @@
-#ОБЩАЯ ИДЕЯ
+# ОБЩАЯ ИДЕЯ
 1. пакет vernadskiy_boltalka/ - весь код приложения (чат, граф, graph_store, rag_pipeline)
 2. paths.project_root() - корень репозитория (рядом лежат data/, vernadskiy_data/), чтобы не завязываться на __file__ в корне
 3. pyproject.toml - зависимости, метаданные, console script vernadskiy-chat.
 tests/ — pytest
 4. файлы в корне (main.py, config.py, build_graph.py, …) - старые команды вроде python main.py и import config продолжают работать
 
-##ЗАПУСК: ВАРИАНТ 1
+## ЗАПУСК: ВАРИАНТ 1
 ```
 pip install -e .
 
@@ -24,14 +24,14 @@ python main.py
 3. python main.py (без аргументов)
     запускает интерактивный чат в терминале — то, чем пользуются уже после того, как граф и индекс готовы
 
-##ЗАПУСК: ВАРИАНТ 2
+## ЗАПУСК: ВАРИАНТ 2
 ```
 pip install -e .
 
 python -m vernadskiy_boltalka
 ```
 
-##ЗАПУСК: ВАРИАНТ 3
+## ЗАПУСК: ВАРИАНТ 3
 ```
 pip install -e .
 
@@ -39,7 +39,7 @@ vernadskiy-chat
 ```
     для этой команды существует cli.py (Command Line Interface), путь для которого прописан в pyptoject.toml [project.scripts]
 
-##ЗАПУСК rag_pipeline
+## ЗАПУСК rag_pipeline
 ```
 pip install -e .
 ```
