@@ -15,8 +15,6 @@ class EmbeddingsConfig(BaseModel):
 
 
 class VectorDBConfig(BaseModel):
-    """Параметры Qdrant; клиент создаётся по URL, локальному path или fallback."""
-
     model_config = ConfigDict(arbitrary_types_allowed=True)
 
     QDRANT_URL: str = ""
@@ -33,7 +31,11 @@ class VectorDBConfig(BaseModel):
         if self.QDRANT_PATH:
             return QdrantClient(path=self.QDRANT_PATH)
         if self.QDRANT_URL:
-            return QdrantClient(url=self.QDRANT_URL, api_key=self.QDRANT_API_KEY or None)
+            return QdrantClient(
+                url=self.QDRANT_URL,
+                api_key=self.QDRANT_API_KEY or None,
+                check_compatibility=False,
+            )
         return QdrantClient(path=os.path.join(project_root(), "qdrant_data"))
 
 
@@ -44,6 +46,8 @@ class Config(BaseSettings):
     QDRANT_API_KEY: str = Field(default="")
     QDRANT_PATH: str = Field(default="")
     COLLECTION: str = Field(default="vernadsky_rag")
+    RAG_GRAPH_COLLECTION: str = Field(default="vernadsky_rag_graph")
+    RAG_DOCUMENTS_COLLECTION: str = Field(default="vernadsky_rag_docs")
 
     BOTHUB_BASE_URL: str = Field(default="")
     BOTHUB_API_KEY: str = Field(default="")
@@ -92,7 +96,6 @@ config = Config()
 
 
 def load_config() -> Config:
-    """Перезагрузка настроек из окружения (удобно в тестах)."""
     global config
     config = Config()
     return config

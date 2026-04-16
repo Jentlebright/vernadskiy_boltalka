@@ -5,59 +5,22 @@ import time
 import uuid
 from typing import Optional
 
-import httpx
-from openai import OpenAI
 from qdrant_client import QdrantClient
 from qdrant_client.models import Distance, PointStruct, VectorParams
 
 from vernadskiy_boltalka.config import config
+from vernadskiy_boltalka.embeddings_core import get_langchain_embeddings
 from vernadskiy_boltalka.paths import project_root
+from vernadskiy_boltalka.rag_pipeline.llm_chunker import chunk_corpus_with_llm
 from vernadskiy_boltalka.rag_pipeline.preprocessing_data import Processor
+from vernadskiy_boltalka.rag_retriever import invalidate_expert_retriever_cache
 
 
 def embed_texts(texts: list[str], model_name: str | None = None) -> list[list[float]]:
     if not texts:
         return []
-
-    cfg = config.embedding_model
-
-    if cfg and cfg.EMB_API_BASE:
-        model = model_name or cfg.EMB_MODEL
-        if not model:
-            return []
-
-        api_key = cfg.EMB_API_KEY
-
-        http_client = httpx.Client(timeout=httpx.Timeout(120.0, connect=10.0))
-        client = OpenAI(
-            api_key=api_key if api_key else None,
-            base_url=cfg.EMB_API_BASE,
-            http_client=http_client,
-        )
-
-        embeddings = []
-        for idx, text in enumerate(texts):
-            if idx > 0 and idx % 10 == 0:
-                print(f"Обработано {idx}/{len(texts)} текстов...")
-
-            max_retries, retry_delay = 3, 1.0
-            for attempt in range(max_retries):
-                try:
-                    response = client.embeddings.create(model=model, input=text)
-                    if response.data and len(response.data) > 0:
-                        embeddings.append(list(response.data[0].embedding))
-                        break
-                    if attempt < max_retries - 1:
-                        time.sleep(retry_delay * (attempt + 1))
-                    else:
-                        break
-                except Exception as e:
-                    print(f"Ошибка для текста {idx + 1}: {e}")
-                    if attempt < max_retries - 1:
-                        time.sleep(retry_delay * (attempt + 1))
-                    else:
-                        break
-        return embeddings
+    emb = get_langchain_embeddings()
+    return emb.embed_documents(texts)
 
 
 def ensure_collection(
@@ -126,18 +89,32 @@ def _get_qdrant_client() -> QdrantClient:
     return config.vector_db.client
 
 
-def run(data_dir: str, recreate: bool = False, chunk_size: int = 500, chunk_overlap: int = 50) -> None:
-    processor = Processor(chunk_size=chunk_size, chunk_overlap=chunk_overlap)
-    chunks = processor.process_dir(data_dir)
+def run(
+    data_dir: str,
+    recreate: bool = False,
+    chunk_size: int = 500,
+    chunk_overlap: int = 50,
+    use_llm_chunks: bool = False,
+) -> None:
+    if use_llm_chunks:
+        proc = Processor()
+        pairs = proc.load_from_dir(data_dir)
+        if not pairs:
+            sys.exit(1)
+        chunks, _ = chunk_corpus_with_llm(pairs)
+    else:
+        processor = Processor(chunk_size=chunk_size, chunk_overlap=chunk_overlap)
+        chunks = processor.process_dir(data_dir)
     if not chunks:
         sys.exit(1)
 
     print(f"Чанков: {len(chunks)}")
     client = _get_qdrant_client()
-    collection = config.vector_db.COLLECTION
+    collection = config.RAG_DOCUMENTS_COLLECTION
     print(f"Коллекция: {collection}")
 
     build_collection(chunks=chunks, collection_name=collection, client=client, recreate=recreate)
+    invalidate_expert_retriever_cache()
     print("Готово.")
 
 
@@ -147,8 +124,15 @@ if __name__ == "__main__":
     parser.add_argument("--recreate", action="store_true", help="Пересоздать коллекцию")
     parser.add_argument("--chunk-size", type=int, default=500)
     parser.add_argument("--chunk-overlap", type=int, default=50)
+    parser.add_argument("--llm-chunks", action="store_true", help="Семантические чанки и overlap через LLM")
     args = parser.parse_args()
 
     root = project_root()
     data_dir = args.data_dir or os.path.join(root, "vernadskiy_data")
-    run(data_dir=data_dir, recreate=args.recreate, chunk_size=args.chunk_size, chunk_overlap=args.chunk_overlap)
+    run(
+        data_dir=data_dir,
+        recreate=args.recreate,
+        chunk_size=args.chunk_size,
+        chunk_overlap=args.chunk_overlap,
+        use_llm_chunks=args.llm_chunks,
+    )

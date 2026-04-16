@@ -1,10 +1,9 @@
 import json
 import os
 import re
+import time
 
-from langchain_openai import ChatOpenAI
-
-from vernadskiy_boltalka.config import config
+from vernadskiy_boltalka.llm_utils import get_chat_llm
 from vernadskiy_boltalka.paths import project_root
 
 _ROOT = project_root()
@@ -63,35 +62,18 @@ def chunk_text(text: str, size: int = CHUNK_SIZE, overlap: int = CHUNK_OVERLAP) 
     return [c for c in chunks if c]
 
 
-def _get_llm():
-    if config.OLLAMA_MODEL:
-        from langchain_community.chat_models import ChatOllama
-        return ChatOllama(
-            base_url=config.OLLAMA_BASE_URL,
-            model=config.OLLAMA_MODEL,
-        )
-    if config.USE_QWEN:
-        from vernadskiy_boltalka.chat_graph import _get_qwen_model
-        return ChatOpenAI(
-            base_url=config.QWEN_RUADAPT_BASE_URL,
-            api_key=config.QWEN_RUADAPT_API_KEY,
-            model=_get_qwen_model(),
-        )
-    if config.USE_VSEGPT:
-        return ChatOpenAI(
-            base_url=config.VSEGPT_API_URL,
-            api_key=config.VSEGPT_API_KEY,
-            model=config.VSEGPT_MODEL,
-        )
-    if config.USE_BOTHUB:
-        return ChatOpenAI(
-            base_url=config.BOTHUB_BASE_URL,
-            api_key=config.BOTHUB_API_KEY,
-            model=config.BOTHUB_MODEL,
-        )
-    return ChatOpenAI(
-        model=config.MODEL or "gpt-4o-mini",
-        api_key=config.OPENAI_API_KEY,
+def _log_slice_health(fname: str, raw_len: int, chunks: list[str]) -> None:
+    if not chunks:
+        print(f"  чтение: {raw_len} симв. → чанков 0 (проверь PDF/извлечение текста)", flush=True)
+        return
+    lens = [len(c) for c in chunks]
+    mn, mx = min(lens), max(lens)
+    avg = sum(lens) // len(lens)
+    short = sum(1 for x in lens if x < 120)
+    hint = "ок" if short <= max(1, len(lens) // 5) else f"много коротких ({short}/{len(lens)})"
+    print(
+        f"  чтение: {raw_len:,} симв. → {len(chunks)} чанков | длина симв. min–ср–max: {mn}–{avg}–{mx} | {hint}",
+        flush=True,
     )
 
 
@@ -169,37 +151,47 @@ def build_graph_from_data(data_dir: str | None = None) -> dict:
     data_dir = data_dir or DATA_DIR
     texts = load_texts_from_dir(data_dir)
     if not texts:
-        print("Нет текстов для обработки.")
+        print("Нет текстов для обработки.", flush=True)
         return {"nodes": [], "edges": []}
 
-    llm = _get_llm()
+    llm = get_chat_llm()
     all_nodes = []
     all_edges = []
 
     for fname, text in texts:
         chunks = chunk_text(text)
-        print(f"\n{fname}: {len(chunks)} чанков")
+        print(f"\n{fname}", flush=True)
+        _log_slice_health(fname, len(text), chunks)
+        nreq = len(chunks)
+        print(
+            f"  LLM: будет {nreq} запросов к модели; между строками может быть тишина 30 с–несколько мин — это ожидание API.",
+            flush=True,
+        )
         for i, chunk in enumerate(chunks):
+            t0 = time.perf_counter()
             n, e = extract_from_chunk(llm, chunk)
+            dt = time.perf_counter() - t0
             all_nodes.extend(n)
             all_edges.extend(e)
-            if (i + 1) % 3 == 0:
-                print(f"  обработано {i + 1}/{len(chunks)}")
+            print(
+                f"  LLM {i + 1}/{nreq}  {dt:5.1f}s  +{len(n)} узл. +{len(e)} рёбер",
+                flush=True,
+            )
 
     graph = merge_graphs(all_nodes, all_edges)
-    print(f"\nИтого: {len(graph['nodes'])} узлов, {len(graph['edges'])} связей")
+    print(f"\nИтого: {len(graph['nodes'])} узлов, {len(graph['edges'])} связей", flush=True)
     return graph
 
 
 def run():
-    print(f"Источник: {DATA_DIR}")
+    print(f"Источник: {DATA_DIR}", flush=True)
     graph = build_graph_from_data()
     graph_dir = os.path.dirname(GRAPH_PATH)
     if graph_dir:
         os.makedirs(graph_dir, exist_ok=True)
     with open(GRAPH_PATH, "w", encoding="utf-8") as f:
         json.dump(graph, f, ensure_ascii=False, indent=2)
-    print(f"Граф сохранён: {GRAPH_PATH}")
+    print(f"Граф сохранён: {GRAPH_PATH}", flush=True)
 
 
 if __name__ == "__main__":

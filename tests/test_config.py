@@ -11,3 +11,5 @@ def test_config_has_collection():
     c = Config()
     assert c.COLLECTION
     assert c.vector_db.COLLECTION == c.COLLECTION
+    assert c.RAG_GRAPH_COLLECTION
+    assert c.RAG_DOCUMENTS_COLLECTION

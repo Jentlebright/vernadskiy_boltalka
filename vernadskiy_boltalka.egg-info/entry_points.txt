@@ -1,0 +1,2 @@
+[console_scripts]
+vernadskiy-chat = vernadskiy_boltalka.cli:main

@@ -13,6 +13,7 @@ from vernadskiy_boltalka.rag_pipeline.embeddings import (
     ensure_collection,
     upsert_chunks,
 )
+from vernadskiy_boltalka.rag_pipeline.llm_chunker import chunk_corpus_with_llm, chunk_text_with_llm
 
 embed_texts_with_model = embed_texts
 
@@ -29,4 +30,6 @@ __all__ = [
     "ensure_collection",
     "upsert_chunks",
     "build_collection",
+    "chunk_text_with_llm",
+    "chunk_corpus_with_llm",
 ]
