@@ -10,17 +10,19 @@ def main() -> None:
     import os
     import sys
 
-    if len(sys.argv) > 1 and sys.argv[1] == "index":
+    cmd = sys.argv[1] if len(sys.argv) > 1 else ""
+
+    if cmd == "index":
         build_index()
         print("Индекс графа знаний построен.")
         return
-    if len(sys.argv) > 1 and sys.argv[1] == "llm-index":
+    if cmd == "llm-index":
         root = project_root()
         data_dir = os.path.join(root, "vernadskiy_data")
         recreate = "--recreate" in sys.argv
         rag_embeddings.run(data_dir=data_dir, recreate=recreate, use_llm_chunks=True)
         return
-    if len(sys.argv) > 1 and sys.argv[1] == "build-graph":
+    if cmd == "build-graph":
         from vernadskiy_boltalka.build_graph import run as build_run
 
         build_run()

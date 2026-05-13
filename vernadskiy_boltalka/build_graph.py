@@ -62,7 +62,7 @@ def chunk_text(text: str, size: int = CHUNK_SIZE, overlap: int = CHUNK_OVERLAP) 
     return [c for c in chunks if c]
 
 
-def _log_slice_health(fname: str, raw_len: int, chunks: list[str]) -> None:
+def _log_slice_health(raw_len: int, chunks: list[str]) -> None:
     if not chunks:
         print(f"  чтение: {raw_len} симв. → чанков 0 (проверь PDF/извлечение текста)", flush=True)
         return
@@ -161,7 +161,7 @@ def build_graph_from_data(data_dir: str | None = None) -> dict:
     for fname, text in texts:
         chunks = chunk_text(text)
         print(f"\n{fname}", flush=True)
-        _log_slice_health(fname, len(text), chunks)
+        _log_slice_health(len(text), chunks)
         nreq = len(chunks)
         print(
             f"  LLM: будет {nreq} запросов к модели; между строками может быть тишина 30 с–несколько мин — это ожидание API.",
